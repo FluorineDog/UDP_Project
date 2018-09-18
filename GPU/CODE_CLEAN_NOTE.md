@@ -8,7 +8,9 @@ If you agree with me, please apply the fix and test it again on your system.
 
 When fixed, the function should be functionally equivalent to that in "multicalc.1.cu". 
 No performance gains yet, but you should test it as well, to make sure I'm not making mistakes.
-The new code explains itself, So the final version will be based on it. 
 
-Thanks. 
+The new code explains itself, i.e., the logic of this code is easier to follow and understand.
+The final version will be based on it. 
+
 Fluorine Dog
+From Linux without IME
