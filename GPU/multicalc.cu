@@ -85,6 +85,8 @@ __global__ void filter_func(float *filtered_data, short *data_in_process)
     }
 }
 
+// DOG: consider add const to trans_data, 
+// DOG: replace "int i" with "const int global_i" to avoid similiar bug in the following
 __global__ void kernel(int i, float *image_data, int *point_count, float *trans_sdata, int parallel_emit_sum)
 {
     int c = 1520;
@@ -107,6 +109,7 @@ __global__ void kernel(int i, float *image_data, int *point_count, float *trans_
     int nn = blockIdx.x;                           //点
                                                    //blockIdx.x+blockIdx.y * gridDimx.x
     int y = threadIdx.x;                           //接收阵元
+    // DOG: j is never used; removing
     int j = i - M + y;                             //接收阵元
     int bid = blockIdx.x + blockIdx.y * gridDim.x; //线程块的索引
     // int tid = blockDim.x * bid + threadIkdx.x;      //线程的索引
@@ -120,6 +123,8 @@ __global__ void kernel(int i, float *image_data, int *point_count, float *trans_
     {
         float u = 0;
         int point_count_1 = 0;
+        // DOG: trigger bug when image_length != image_width
+        // DOG: use x = -image_width instead
         float z1 = -image_length / 2 + d_z * nn;
         float x = -image_length / 2 + d_x * k_line;
         float xg = 0.0014;
@@ -129,10 +134,14 @@ __global__ void kernel(int i, float *image_data, int *point_count, float *trans_
         //  int j=y*ELE_NO/M+jj;
         for (int jj = 0; jj < parallel_emit_sum; jj++)
         {
+            // DOG: trigger bug when parallel_emit_sum >= 2
+            // DOG: use int i = ::i + jj instead
+            // DOG: or int i = global_i + jj; if parameter replaced
             i = i + jj;
             int j = i - M + y; //接收阵元
             j = (j + ELE_NO) % ELE_NO;
-
+            // DOG: ugly name pair <dev_ele_coord_y, z1>
+            // DOG: put off the renaming
             float disi = sqrtf((dev_ele_coord_x[i] - x) * (dev_ele_coord_x[i] - x) + (z1 - dev_ele_coord_y[i]) * (z1 - dev_ele_coord_y[i]));
             float disj = sqrtf((dev_ele_coord_x[j] - x) * (dev_ele_coord_x[j] - x) + (z1 - dev_ele_coord_y[j]) * (z1 - dev_ele_coord_y[j]));
             float ilength = 112.0 / 1000;
