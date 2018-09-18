@@ -40,23 +40,24 @@ inline __device__ float distance(float x1, float y1, float x2, float y2) {
 }
 
 bool __device__ __host__ is_close(int delta, int range) {
-    // int abs_delta = abs(delta);
-    // return (abs_delta < range || range > 2048 - range);
-    return (delta + range + 2047) % 2048 < 2 * range - 1;
+    int abs_delta = abs(delta);
+    return (abs_delta < range || range > 2048 - range);
+    // return (delta + range + 2047) % 2048 < 2 * range - 1;
 }
 
 __global__ void calc_func(const int global_step, float *image_data,
                           int *point_count, const float *trans_sdata,
                           const int parallel_emit_sum) {
-    int count = 1520;
+    int sound_speed = 1520;
     float fs = 25e6;
     float image_width = 200.0 / 1000;
     float image_length = 200.0 / 1000;
     float data_diameter = 220.0 / 1000;
-    int point_length = data_diameter / count * fs + 0.5;
+    // 3618
+    int point_length = data_diameter / sound_speed * fs + 0.5;
     float d_x = image_width / (N - 1);
     float d_z = image_length / (N - 1);
-
+    // magic code...
     int middot =
         -160;    //发射前1us开始接收，也就是约为12.5个点之后发射,数据显示约16个点
 
@@ -70,8 +71,8 @@ __global__ void calc_func(const int global_step, float *image_data,
     int cacheIndex = threadIdx.x;
 
     if (image_x_id < N && image_z_id < N && recv_center_id < 2 * M) {
-        float u = 0;
-        int point_count_1 = 0;
+        float sum_image = 0;
+        int sum_point = 0;
         float value_z = -image_length / 2 + d_z * image_z_id;
         float value_x = -image_length / 2 + d_x * image_x_id;
         // what the hell is this !!! need more comments!!!
@@ -89,34 +90,37 @@ __global__ void calc_func(const int global_step, float *image_data,
             float disj = distance(dev_ele_coord_x[recv_id],
                                   dev_ele_coord_y[recv_id], value_x, value_z);
             // what the hell is this !!! need more comments!!!
-            // i guess it is a radius? 
+            // i guess it is a radius?
             float ilength = 112.0 / 1000;
             float imagelength = sqrtf(value_x * value_x + value_z * value_z);
-
+            // 2 * R * disi * cosTheta = R^2 + disi^2 - |(x, z)|^2
             float angle = acosf(
                 (ilength * ilength + disi * disi - imagelength * imagelength) /
                 2 / ilength / disi);
+
+            // put disi constraint onto for;
+            // and since
             auto diff = send_id - recv_id;
             bool is_valid = (disi >= 0.1 * 2 / 3 && is_close(diff, 256)) ||
                             (disi >= 0.1 * 1 / 3 && is_close(diff, 200)) ||
                             (disi >= 0.1 * 0 / 3 && is_close(diff, 100));
             if (is_valid) {
-                int num = (disi + disj) / count * fs + 0.5;
+                int num = (disi + disj) / sound_speed * fs + 0.5;
 
                 if (((num + middot + (OD - 1 - 1) / 2) > 100) &&
                     ((num + middot + (OD - 1 - 1) / 2) <= point_length) &&
                     (angle < PI / 9)) {
-                    u +=
+                    sum_image +=
                         trans_sdata[(num + middot + (OD - 1 - 1) / 2) * ELE_NO +
                                     recv_id + step_offset * ELE_NO * NSAMPLE] *
                         expf(xg * (num - 1));
 
-                    point_count_1 += 1;
+                    sum_point += 1;
                 }
             }
         }
-        cache_image[cacheIndex] = u;
-        cache_point[cacheIndex] = point_count_1;
+        cache_image[cacheIndex] = sum_image;
+        cache_point[cacheIndex] = sum_point;
 
         __syncthreads();
         // sum up cache_image and cacheIndex, and i have way to make this part disappear
@@ -139,7 +143,10 @@ __global__ void calc_func(const int global_step, float *image_data,
     }
 }
 
-int main() {
-    dim3 dim(1, 1);
-    calc_func<<<dim, 512>>>(0, 0, 0, 0, 0);
+int main(int argc, char *argv[]) {
+    if (argc < 0) {
+        dim3 dim(1, 1);
+        calc_func<<<dim, 512>>>(0, 0, 0, 0, 0);
+    }
+    return 0;
 }
