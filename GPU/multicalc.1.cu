@@ -60,8 +60,8 @@ __global__ void calc_func(const int global_step, float *image_data,
   if (image_x_id < N && image_z_id < N && recv_id < 2 * M) {
     float u = 0;
     int point_count_1 = 0;
-    float z1 = -image_length / 2 + d_z * image_z_id;
-    float x = -image_length / 2 + d_x * image_x_id;
+    float value_z = -image_length / 2 + d_z * image_z_id;
+    float value_x = -image_length / 2 + d_x * image_x_id;
     float xg = 0.0014;
 
     for (int step_offset = 0; step_offset < parallel_emit_sum; step_offset++) {
@@ -70,12 +70,12 @@ __global__ void calc_func(const int global_step, float *image_data,
       j = (j + ELE_NO) % ELE_NO;
 
       float disi =
-          sqrtf((dev_ele_coord_x[step] - x) * (dev_ele_coord_x[step] - x) +
-                (z1 - dev_ele_coord_y[step]) * (z1 - dev_ele_coord_y[step]));
-      float disj = sqrtf((dev_ele_coord_x[j] - x) * (dev_ele_coord_x[j] - x) +
-                         (z1 - dev_ele_coord_y[j]) * (z1 - dev_ele_coord_y[j]));
+          sqrtf((dev_ele_coord_x[step] - value_x) * (dev_ele_coord_x[step] - value_x) +
+                (value_z - dev_ele_coord_y[step]) * (value_z - dev_ele_coord_y[step]));
+      float disj = sqrtf((dev_ele_coord_x[j] - value_x) * (dev_ele_coord_x[j] - value_x) +
+                         (value_z - dev_ele_coord_y[j]) * (value_z - dev_ele_coord_y[j]));
       float ilength = 112.0 / 1000;
-      float imagelength = sqrtf(x * x + z1 * z1);
+      float imagelength = sqrtf(value_x * value_x + value_z * value_z);
       float angle =
           acosf((ilength * ilength + disi * disi - imagelength * imagelength) /
                 2 / ilength / disi);
