@@ -39,10 +39,10 @@ inline __device__ float distance(float x1, float y1, float x2, float y2) {
     return sqrtf(dx * dx + dy * dy);
 }
 
-bool __device__ __host__ is_close(int delta, int range){
+bool __device__ __host__ is_close(int delta, int range) {
     // int abs_delta = abs(delta);
     // return (abs_delta < range || range > 2048 - range);
-    return (delta + range + 2047) % 2048 < 2 * range - 1; 
+    return (delta + range + 2047) % 2048 < 2 * range - 1;
 }
 
 __global__ void calc_func(const int global_step, float *image_data,
@@ -74,6 +74,7 @@ __global__ void calc_func(const int global_step, float *image_data,
         int point_count_1 = 0;
         float value_z = -image_length / 2 + d_z * image_z_id;
         float value_x = -image_length / 2 + d_x * image_x_id;
+        // what the hell is this !!! need more comments!!!
         float xg = 0.0014;
 
         for (int step_offset = 0; step_offset < parallel_emit_sum;
@@ -83,22 +84,23 @@ __global__ void calc_func(const int global_step, float *image_data,
             int recv_id = send_id - M + recv_center_id;    //接收阵元
             recv_id = (recv_id + ELE_NO) % ELE_NO;
 
-            float disi = distance(dev_ele_coord_x[send_id], dev_ele_coord_y[send_id], value_x, value_z);
-            float disj = distance(dev_ele_coord_x[recv_id], dev_ele_coord_y[recv_id], value_x, value_z);
-            // what the fuck is this !!!
+            float disi = distance(dev_ele_coord_x[send_id],
+                                  dev_ele_coord_y[send_id], value_x, value_z);
+            float disj = distance(dev_ele_coord_x[recv_id],
+                                  dev_ele_coord_y[recv_id], value_x, value_z);
+            // what the hell is this !!! need more comments!!!
+            // i guess it is a radius? 
             float ilength = 112.0 / 1000;
             float imagelength = sqrtf(value_x * value_x + value_z * value_z);
+
             float angle = acosf(
                 (ilength * ilength + disi * disi - imagelength * imagelength) /
                 2 / ilength / disi);
-            if ((disi >= 0.1 * 2 / 3 &&
-                 (abs(send_id - recv_id) < 256 ||
-                  abs(send_id - recv_id) > 2048 - 256)) ||
-                (disi >= 0.1 * 1 / 3 &&
-                 (abs(send_id - recv_id) < 200 ||
-                  abs(send_id - recv_id) > 2048 - 200)) ||
-                (disi >= 0 && (abs(send_id - recv_id) < 100 ||
-                               abs(send_id - recv_id) > 2048 - 100))) {
+            auto diff = send_id - recv_id;
+            bool is_valid = (disi >= 0.1 * 2 / 3 && is_close(diff, 256)) ||
+                            (disi >= 0.1 * 1 / 3 && is_close(diff, 200)) ||
+                            (disi >= 0.1 * 0 / 3 && is_close(diff, 100));
+            if (is_valid) {
                 int num = (disi + disj) / count * fs + 0.5;
 
                 if (((num + middot + (OD - 1 - 1) / 2) > 100) &&
@@ -117,7 +119,7 @@ __global__ void calc_func(const int global_step, float *image_data,
         cache_point[cacheIndex] = point_count_1;
 
         __syncthreads();
-        // sum up
+        // sum up cache_image and cacheIndex, and i have way to make this part disappear
         int step = blockDim.x / 2;
         while (step != 0) {
             if (cacheIndex < step) {
