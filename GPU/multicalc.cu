@@ -21,23 +21,6 @@ using namespace std;
 
 int parallel_emit_sum = 1;
 
-/* struct CONST_VALUE
-{
-        float sample_frequency_div_sound_speed;
-        float image_width;
-        float image_length;
-        float data_diameter;
-        int point_length;
-        float d_x;
-        float d_z;
-        int middot; //发射前1us开始接收，也就是约为12.5个点之后发射,数据显示约16个点
-                                             //const int ELE_NO=1024;
-};
-
-__constant__ CONST_VALUE const_value; */
-
-//const int sample_point_num=5000;
-
 __device__ float dev_ele_coord_x[ELE_NO];
 __device__ float dev_ele_coord_y[ELE_NO];    //写到纹理内存里面
 __device__ float dev_filter_data[OD];        //filter parameter
@@ -45,30 +28,6 @@ __device__ float dev_filter_data[OD];        //filter parameter
 // short data_samples_in_process[NSAMPLE * ELE_NO * 2] = {0}; //写到页锁定主机内存
 float image_data[N * N] = {0};
 int image_point_count[N * N] = {0};
-
-__global__ void kernel3(float *filtered_data, short *data_in_process) {
-  int column_id = blockDim.x * blockIdx.x + threadIdx.x;
-  short data[NSAMPLE];
-  float filter_temp_data[NSAMPLE];
-
-  if (column_id < gridDim.x * blockDim.x)    // 没有意义，但是不能删除
-  {
-    memset(filter_temp_data, 0, NSAMPLE * sizeof(float));
-    for (int sample_cnt = 0; sample_cnt < NSAMPLE; sample_cnt++) {
-      data[sample_cnt] = data_in_process[sample_cnt * ELE_NO + column_id];
-      for (int j = 0; sample_cnt >= j && j < OD; j++)
-
-      {
-        filter_temp_data[sample_cnt] +=
-            (dev_filter_data[j] * data[sample_cnt - j]);
-      }
-    }
-
-    for (int i = 0; i < NSAMPLE; i++) {
-      filtered_data[i * ELE_NO + column_id] = filter_temp_data[i];
-    }
-  }
-}
 
 // 滤波函数
 __global__ void filter_func(float *filtered_data, short *data_in_process) {
@@ -104,7 +63,6 @@ __global__ void calc_func(int i, float *image_data, int *point_count,
   int image_x_id = blockIdx.x;        //点
                               //blockIdx.x+blockIdx.y * gridDimx.x
   int y = threadIdx.x;        //接收阵元
-  int j = i - M + y;          //接收阵元
   int pixel_index = blockIdx.x + blockIdx.y * gridDim.x;    //线程块的索引
   // int tid = blockDim.x * pixel_index + threadIkdx.x;            //线程的索引
 
