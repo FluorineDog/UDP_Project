@@ -32,13 +32,13 @@ int image_point_count[N * N] = {0};
 // 滤波函数
 
 __global__ void calc_func(int i, float *image_data, int *point_count,
-                          float *trans_sdata, int parallel_emit_sum) {
-  int c = 1520;
+                          const float *trans_sdata, int parallel_emit_sum) {
+  int count = 1520;
   float fs = 25e6;
   float image_width = 200.0 / 1000;
   float image_length = 200.0 / 1000;
   float data_diameter = 220.0 / 1000;
-  int point_length = data_diameter / c * fs + 0.5;
+  int point_length = data_diameter / count * fs + 0.5;
   float d_x = image_width / (N - 1);
   float d_z = image_length / (N - 1);
 
@@ -87,7 +87,7 @@ __global__ void calc_func(int i, float *image_data, int *point_count,
           (disi >= 0.1 * 1 / 3 &&
            (abs(i - j) < 200 || abs(i - j) > 2048 - 200)) ||
           (disi >= 0 && (abs(i - j) < 100 || abs(i - j) > 2048 - 100))) {
-        int num = (disi + disj) / c * fs + 0.5;
+        int num = (disi + disj) / count * fs + 0.5;
 
         if (((num + middot + (OD - 1 - 1) / 2) > 100) &&
             ((num + middot + (OD - 1 - 1) / 2) <= point_length) &&
