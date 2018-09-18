@@ -33,7 +33,7 @@ int image_point_count[N * N] = {0};
 // trans_sdata is raw input
 // we have to use it against the best method
 
-inline __device__ distance(float x1, float y1, float x2, float y2) {
+inline __device__ float distance(float x1, float y1, float x2, float y2) {
     auto dx = x1 - x2;
     auto dy = y1 - y2;
     return sqrtf(dx * dx + dy * dy);
@@ -57,13 +57,13 @@ __global__ void calc_func(const int global_step, float *image_data,
     int image_x_id = blockIdx.y;    //线
     int image_z_id = blockIdx.x;    //点
     int image_z_dim = gridDim.x;
-    int recv_id = threadIdx.x;    //接收阵元
+    int recv_center_id = threadIdx.x;    //center of 接收阵元
 
     __shared__ float cache_image[2 * M];
     __shared__ int cache_point[2 * M];
     int cacheIndex = threadIdx.x;
 
-    if (image_x_id < N && image_z_id < N && recv_id < 2 * M) {
+    if (image_x_id < N && image_z_id < N && recv_center_id < 2 * M) {
         float u = 0;
         int point_count_1 = 0;
         float value_z = -image_length / 2 + d_z * image_z_id;
@@ -73,27 +73,30 @@ __global__ void calc_func(const int global_step, float *image_data,
         for (int step_offset = 0; step_offset < parallel_emit_sum;
              step_offset++) {
             int step = global_step + step_offset;
-            int j = step - M + recv_id;    //接收阵元
-            j = (j + ELE_NO) % ELE_NO;
-            float disi = sqrtf((dev_ele_coord_x[step] - value_x) *
-                                   (dev_ele_coord_x[step] - value_x) +
-                               (value_z - dev_ele_coord_y[step]) *
-                                   (value_z - dev_ele_coord_y[step]));
-            float disj = sqrtf((dev_ele_coord_x[j] - value_x) *
-                                   (dev_ele_coord_x[j] - value_x) +
-                               (value_z - dev_ele_coord_y[j]) *
-                                   (value_z - dev_ele_coord_y[j]));
+            int send_id = step;                            // as send_id
+            int recv_id = send_id - M + recv_center_id;    //接收阵元
+            recv_id = (recv_id + ELE_NO) % ELE_NO;
+            // float disi = distance(dev_ele_coord_x[send_id], dev_ele_coord_y[send_id], value_x, value_z);
+            float disi = sqrtf(
+                (dev_ele_coord_x[step] - value_x) * (dev_ele_coord_x[step] - value_x) +
+                (value_z - dev_ele_coord_y[step]) * (value_z - dev_ele_coord_y[step]));
+            float disj = sqrtf((dev_ele_coord_x[recv_id] - value_x) *
+                                   (dev_ele_coord_x[recv_id] - value_x) +
+                               (value_z - dev_ele_coord_y[recv_id]) *
+                                   (value_z - dev_ele_coord_y[recv_id]));
             float ilength = 112.0 / 1000;
             float imagelength = sqrtf(value_x * value_x + value_z * value_z);
             float angle = acosf(
                 (ilength * ilength + disi * disi - imagelength * imagelength) /
                 2 / ilength / disi);
             if ((disi >= 0.1 * 2 / 3 &&
-                 (abs(step - j) < 256 || abs(step - j) > 2048 - 256)) ||
+                 (abs(send_id - recv_id) < 256 ||
+                  abs(send_id - recv_id) > 2048 - 256)) ||
                 (disi >= 0.1 * 1 / 3 &&
-                 (abs(step - j) < 200 || abs(step - j) > 2048 - 200)) ||
-                (disi >= 0 &&
-                 (abs(step - j) < 100 || abs(step - j) > 2048 - 100))) {
+                 (abs(send_id - recv_id) < 200 ||
+                  abs(send_id - recv_id) > 2048 - 200)) ||
+                (disi >= 0 && (abs(send_id - recv_id) < 100 ||
+                               abs(send_id - recv_id) > 2048 - 100))) {
                 int num = (disi + disj) / count * fs + 0.5;
 
                 if (((num + middot + (OD - 1 - 1) / 2) > 100) &&
@@ -101,7 +104,7 @@ __global__ void calc_func(const int global_step, float *image_data,
                     (angle < PI / 9)) {
                     u +=
                         trans_sdata[(num + middot + (OD - 1 - 1) / 2) * ELE_NO +
-                                    j + step_offset * ELE_NO * NSAMPLE] *
+                                    recv_id + step_offset * ELE_NO * NSAMPLE] *
                         expf(xg * (num - 1));
 
                     point_count_1 += 1;
