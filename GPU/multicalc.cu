@@ -90,6 +90,7 @@ __global__ void filter_func(float *filtered_data, short *data_in_process)
 __global__ void kernel(int i, float *image_data, int *point_count, float *trans_sdata, int parallel_emit_sum)
 {
     int c = 1520;
+    // DOG: WARING: 2.5e6 or just 25 * 1e6? Using the second(means no modification).
     float fs = 25e6;
     float image_width = 200.0 / 1000;
     float image_length = 200.0 / 1000;
