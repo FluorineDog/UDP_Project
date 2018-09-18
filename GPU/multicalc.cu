@@ -104,8 +104,8 @@ __global__ void kernel(int i, float *image_data, int *point_count,
       -160;    //发射前1us开始接收，也就是约为12.5个点之后发射,数据显示约16个点
                //const int ELE_NO=1024;
 
-  int k_line = blockIdx.y;    //线
-  int nn = blockIdx.x;        //点
+  int image_y_id = blockIdx.y;    //线
+  int image_x_id = blockIdx.x;        //点
                               //blockIdx.x+blockIdx.y * gridDimx.x
   int y = threadIdx.x;        //接收阵元
 
@@ -117,11 +117,11 @@ __global__ void kernel(int i, float *image_data, int *point_count,
   /*__shared__ float cache_image2[512];*/
   int cacheIndex = threadIdx.x;
 
-  if (k_line < N && nn < N && y < 2 * M) {
+  if (image_y_id < N && image_x_id < N && y < 2 * M) {
     float u = 0;
     int point_count_1 = 0;
-    float z1 = -image_length / 2 + d_z * nn;
-    float x = -image_length / 2 + d_x * k_line;
+    float z1 = -image_length / 2 + d_z * image_x_id;
+    float x = -image_length / 2 + d_x * image_y_id;
     float xg = 0.0014;
 
     for (int jj = 0; jj < parallel_emit_sum; jj++) {
@@ -193,8 +193,8 @@ __global__ void calc_func(int i, float *image_data, int *point_count,
       -160;    //发射前1us开始接收，也就是约为12.5个点之后发射,数据显示约16个点
                //const int ELE_NO=1024;
 
-  int k_line = blockIdx.y;    //线
-  int nn = blockIdx.x;        //点
+  int image_y_id = blockIdx.y;    //线
+  int image_x_id = blockIdx.x;        //点
                               //blockIdx.x+blockIdx.y * gridDimx.x
   int y = threadIdx.x;        //接收阵元
   int j = i - M + y;          //接收阵元
@@ -206,11 +206,11 @@ __global__ void calc_func(int i, float *image_data, int *point_count,
   /*__shared__ float cache_image2[512];*/
   int cacheIndex = threadIdx.x;
 
-  if (k_line < N && nn < N && y < 2 * M) {
+  if (image_y_id < N && image_x_id < N && y < 2 * M) {
     float u = 0;
     int point_count_1 = 0;
-    float z1 = -image_length / 2 + d_z * nn;
-    float x = -image_length / 2 + d_x * k_line;
+    float z1 = -image_length / 2 + d_z * image_x_id;
+    float x = -image_length / 2 + d_x * image_y_id;
     float xg = 0.0014;
 
     // for(int jj=1;jj<=ELE_NO/M;jj++)
