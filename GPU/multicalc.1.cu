@@ -76,14 +76,15 @@ __global__ void calc_func(const int global_step, float *image_data,
             int send_id = step;                            // as send_id
             int recv_id = send_id - M + recv_center_id;    //接收阵元
             recv_id = (recv_id + ELE_NO) % ELE_NO;
-            // float disi = distance(dev_ele_coord_x[send_id], dev_ele_coord_y[send_id], value_x, value_z);
-            float disi = sqrtf(
-                (dev_ele_coord_x[step] - value_x) * (dev_ele_coord_x[step] - value_x) +
-                (value_z - dev_ele_coord_y[step]) * (value_z - dev_ele_coord_y[step]));
-            float disj = sqrtf((dev_ele_coord_x[recv_id] - value_x) *
-                                   (dev_ele_coord_x[recv_id] - value_x) +
-                               (value_z - dev_ele_coord_y[recv_id]) *
-                                   (value_z - dev_ele_coord_y[recv_id]));
+            float disi = distance(dev_ele_coord_x[send_id], dev_ele_coord_y[send_id], value_x, value_z);
+            // float disi = sqrtf(
+            //     (dev_ele_coord_x[step] - value_x) * (dev_ele_coord_x[step] - value_x) +
+            //     (value_z - dev_ele_coord_y[step]) * (value_z - dev_ele_coord_y[step]));
+            float disj = distance(dev_ele_coord_x[recv_id], dev_ele_coord_y[recv_id], value_x, value_z);
+            // float disj = sqrtf((dev_ele_coord_x[recv_id] - value_x) *
+            //                        (dev_ele_coord_x[recv_id] - value_x) +
+            //                    (value_z - dev_ele_coord_y[recv_id]) *
+            //                        (value_z - dev_ele_coord_y[recv_id]));
             float ilength = 112.0 / 1000;
             float imagelength = sqrtf(value_x * value_x + value_z * value_z);
             float angle = acosf(
