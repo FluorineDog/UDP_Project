@@ -39,6 +39,12 @@ inline __device__ float distance(float x1, float y1, float x2, float y2) {
     return sqrtf(dx * dx + dy * dy);
 }
 
+bool __device__ __host__ is_close(int delta, int range){
+    // int abs_delta = abs(delta);
+    // return (abs_delta < range || range > 2048 - range);
+    return (delta + range + 2047) % 2048 < 2 * range - 1; 
+}
+
 __global__ void calc_func(const int global_step, float *image_data,
                           int *point_count, const float *trans_sdata,
                           const int parallel_emit_sum) {
@@ -76,15 +82,10 @@ __global__ void calc_func(const int global_step, float *image_data,
             int send_id = step;                            // as send_id
             int recv_id = send_id - M + recv_center_id;    //接收阵元
             recv_id = (recv_id + ELE_NO) % ELE_NO;
+
             float disi = distance(dev_ele_coord_x[send_id], dev_ele_coord_y[send_id], value_x, value_z);
-            // float disi = sqrtf(
-            //     (dev_ele_coord_x[step] - value_x) * (dev_ele_coord_x[step] - value_x) +
-            //     (value_z - dev_ele_coord_y[step]) * (value_z - dev_ele_coord_y[step]));
             float disj = distance(dev_ele_coord_x[recv_id], dev_ele_coord_y[recv_id], value_x, value_z);
-            // float disj = sqrtf((dev_ele_coord_x[recv_id] - value_x) *
-            //                        (dev_ele_coord_x[recv_id] - value_x) +
-            //                    (value_z - dev_ele_coord_y[recv_id]) *
-            //                        (value_z - dev_ele_coord_y[recv_id]));
+            // what the fuck is this !!!
             float ilength = 112.0 / 1000;
             float imagelength = sqrtf(value_x * value_x + value_z * value_z);
             float angle = acosf(
