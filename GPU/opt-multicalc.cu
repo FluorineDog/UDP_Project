@@ -46,45 +46,6 @@ __device__ float dev_filter_data[OD];        //filter parameter
 float image_data[N * N] = {0};
 int image_point_count[N * N] = {0};
 
-__global__ void kernel3(float *filtered_data, short *data_in_process) {
-  int column_id = blockDim.x * blockIdx.x + threadIdx.x;
-  short data[NSAMPLE];
-  float filter_temp_data[NSAMPLE];
-
-  if (column_id < gridDim.x * blockDim.x)    // 没有意义，但是不能删除
-  {
-    memset(filter_temp_data, 0, NSAMPLE * sizeof(float));
-    for (int sample_cnt = 0; sample_cnt < NSAMPLE; sample_cnt++) {
-      data[sample_cnt] = data_in_process[sample_cnt * ELE_NO + column_id];
-      for (int j = 0; sample_cnt >= j && j < OD; j++)
-
-      {
-        filter_temp_data[sample_cnt] +=
-            (dev_filter_data[j] * data[sample_cnt - j]);
-      }
-    }
-
-    for (int i = 0; i < NSAMPLE; i++) {
-      filtered_data[i * ELE_NO + column_id] = filter_temp_data[i];
-    }
-  }
-}
-
-// 滤波函数
-__global__ void filter_func(float *filtered_data, short *data_in_process) {
-  int column_id = blockDim.x * blockIdx.x + threadIdx.x;
-  for (int sample_cnt = 0; sample_cnt < NSAMPLE; sample_cnt++) {
-    for (int j = 0; sample_cnt >= j && j < OD; j++) {
-      filtered_data[(column_id / 2048) * ELE_NO * NSAMPLE +
-                    sample_cnt * ELE_NO + column_id % 2048] +=
-          (dev_filter_data[j] *
-           data_in_process[(sample_cnt - j) * ELE_NO +
-                           (column_id / 2048) * ELE_NO * NSAMPLE +
-                           column_id % 2048]);
-    }
-  }
-}
-
 __global__ void kernel(int i, float *image_data, int *point_count,
                        float *trans_sdata, int parallel_emit_sum) {
   int c = 1520;
